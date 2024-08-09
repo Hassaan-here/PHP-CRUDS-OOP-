@@ -23,28 +23,27 @@ class query extends Database
 {
     public function getData($table, $field = '*', $conditionArr = '', $order_by_field = '', $order_by_type = 'desc', $limit = '')
     {
-        $sql = "SELECT $field FROM $table ";
+        $sql = "SELECT $field FROM $table";
 
         // Conditions Check
         if (is_array($conditionArr) && !empty($conditionArr)) {
-            $sql .= 'WHERE ';
-            $c = count($conditionArr);
-            $i = 1;
+            $whereClauses = [];
 
             foreach ($conditionArr as $key => $value) {
-                // Ensure proper quoting for SQL queries
-                $sql .= "$key= '$value' ";
-
-                if ($i < $c) {
-                    $sql .= ' AND ';
+                if (is_numeric($value)) {
+                    $whereClauses[] = "$key = $value";
+                } else {
+                    $whereClauses[] = "$key = '$value'";
                 }
-                $i++;
+            }
+            if (!empty($whereClauses)) {
+                $sql .= " WHERE " . implode(" AND ", $whereClauses);
             }
         }
 
         // Order BY Check
         if (!empty($order_by_field)) {
-            $sql .= "ORDER by $order_by_field $order_by_type ";
+            $sql .= " ORDER by $order_by_field $order_by_type ";
         }
         // Limit Check
         if (!empty($limit)) {
@@ -62,58 +61,79 @@ class query extends Database
         // }
     }
 
-    public function insertData($table, $conditionArr = '')
+    public function insertData($table, $conditionArr = [])
     {
         $sql = "INSERT INTO $table (";
-        $values = "VALUES (";
 
-        // Fields and Values
         if (is_array($conditionArr) && !empty($conditionArr)) {
-            $c = count($conditionArr);
-            $i = 1;
+            $fields = [];
+            $values = [];
 
             foreach ($conditionArr as $key => $value) {
-                $sql .= $key;
+                $fields[] = $key;
 
                 if (is_numeric($value)) {
-                    $values .= "$value";
+                    $values[] = $value;
                 } else {
-                    $values .= "'$value'";
+                    $values[] = "'$value'";
                 }
-
-                if ($i < $c) {
-                    $sql .= ', ';
-                    $values .= ', ';
-                }
-                $i++;
             }
 
-            $sql .= ") " . $values . ")";
+            $sql .= implode(', ', $fields) . ") VALUES (" . implode(', ', $values) . ")";
         }
 
-        die($sql); // For debugging, to see the generated SQL query
+        die($sql);
     }
 
-    public function deleteData($table, $conditionArr = '')
+
+    public function deleteData($table, $conditionArr = [])
     {
-        $sql = " DELETE FROM $table WHERE ";
+        $sql = "DELETE FROM $table";
 
         if (is_array($conditionArr) && !empty($conditionArr)) {
-            $c = count($conditionArr);
-            $i = 1;
+            $whereClauses = [];
 
             foreach ($conditionArr as $key => $value) {
                 if (is_numeric($value)) {
-                    $sql .= "$key = $value";
+                    $whereClauses[] = "$key = $value";
                 } else {
-                    $sql .= "$key = '$value'";
+                    $whereClauses[] = "$key = '$value'";
                 }
-                if ($i < $c) {
-                    $sql .= " AND ";
-                }
-                $i++;
             }
+            $sql .= " WHERE " . implode(" AND ", $whereClauses);
         }
+
+        die($sql);
+    }
+
+    public function updateData($table, $conditionArr = '', $fields = '')
+    {
+        $sql = "UPDATE $table SET ";
+        if (is_array($conditionArr) && is_array($fields) && !empty($conditionArr) && !empty($fields)) {
+            $setClauses = [];
+            $whereClauses = [];
+
+            // Building the SET clause
+            foreach ($conditionArr as $key => $value) {
+                if (is_numeric($value)) {
+                    $setClauses[] = "$key = $value";
+                } else {
+                    $setClauses[] = "$key = '$value'";
+                }
+            }
+            $sql .= implode(" , ", $setClauses);
+
+            // Building the WHERE clause
+            foreach ($fields as $key => $value) {
+                if (is_numeric($value)) {
+                    $whereClauses[] = "$key = $value";
+                } else {
+                    $whereClauses[] = "$key = '$value'";
+                }
+            }
+            $sql .= " WHERE " . implode(" AND ", $whereClauses);
+        }
+
         die($sql);
     }
 }
@@ -121,8 +141,10 @@ class query extends Database
 
 
 $obj = new query();
-$conditionArr = array('id' => 1, 'Name' => 'John Doe');
-$result = $obj->getData('students', '*', $conditionArr, 'name', 'asc', 7);
+$conditionArr = array('Name' => 'John Doeee');
+$fields = array('id' => 1, 'Name' => 'John Doe');
+// $result = $obj->getData('students', 'name,age', $conditionArr, 'name', 'asc', 7);
 // $result = $obj->insertData('students', $conditionArr);
 // $result = $obj->deleteData('students', $conditionArr);
+$result = $obj->updateData('students', $conditionArr, $fields);
 print_r($result);
